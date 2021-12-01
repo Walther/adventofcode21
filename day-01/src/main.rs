@@ -3,7 +3,7 @@ use itertools::Itertools;
 fn main() {
     const INPUT: &str = include_str!("input.txt");
     let lines = INPUT.lines();
-    let numbers: Vec<u32> = lines.into_iter().map(|x| x.parse().unwrap()).collect();
+    let numbers: Vec<u32> = lines.map(|x| x.parse().unwrap()).collect();
     let mut num_increases = 0;
 
     // Part 1: sliding window of two, how many pairs have an increasing order?
