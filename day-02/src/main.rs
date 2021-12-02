@@ -1,4 +1,4 @@
-use anyhow::{anyhow, Error, Result};
+use anyhow::{anyhow, Context, Error, Result};
 use std::str::FromStr;
 
 fn main() -> Result<()> {
@@ -58,11 +58,12 @@ enum Instruction {
 impl FromStr for Instruction {
     type Err = Error;
     fn from_str(line: &str) -> Result<Instruction> {
-        let instruction: Vec<&str> = line.split(' ').collect();
-        let direction = instruction.get(0).ok_or(anyhow!("Direction not found"))?;
-        let offset: u32 = instruction[1].parse()?;
+        let (direction, offset) = line
+            .split_once(' ')
+            .context("Failed to split instruction to direction and offset")?;
+        let offset: u32 = offset.parse()?;
 
-        match *direction {
+        match direction {
             "forward" => Ok(Instruction::Forward(offset)),
             "down" => Ok(Instruction::Down(offset)),
             "up" => Ok(Instruction::Up(offset)),
