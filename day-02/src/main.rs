@@ -12,7 +12,7 @@ fn main() {
     let mut aim_position = (0, 0);
     let mut aim = 0;
     simple_coords.push(simple_position);
-    aim_coords.push(simple_position);
+    aim_coords.push(aim_position);
 
     for line in lines {
         let instruction: Vec<&str> = line.split(' ').collect();
