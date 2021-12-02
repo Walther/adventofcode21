@@ -1,4 +1,7 @@
-fn main() {
+use anyhow::{anyhow, Error, Result};
+use std::str::FromStr;
+
+fn main() -> Result<()> {
     const INPUT: &str = include_str!("input.txt");
     let lines = INPUT.lines();
 
@@ -15,27 +18,22 @@ fn main() {
     aim_coords.push(aim_position);
 
     for line in lines {
-        let instruction: Vec<&str> = line.split(' ').collect();
-        let direction = instruction.get(0).unwrap();
-        let offset: u32 = instruction[1].parse().unwrap();
+        let instruction: Instruction = line.parse()?;
 
         // NOTE: Submarine coordinates: origin is (0,0), y down is positive
-        match *direction {
-            "forward" => {
+        match instruction {
+            Instruction::Forward(offset) => {
                 simple_position.0 += offset;
                 aim_position.0 += offset;
                 aim_position.1 += aim * offset;
             }
-            "down" => {
+            Instruction::Down(offset) => {
                 simple_position.1 += offset;
                 aim += offset;
             }
-            "up" => {
+            Instruction::Up(offset) => {
                 simple_position.1 -= offset;
                 aim -= offset;
-            }
-            _ => {
-                panic!("Unsupported instruction: {:?}", instruction);
             }
         }
         simple_coords.push(simple_position);
@@ -47,4 +45,28 @@ fn main() {
     println!("Part 1: {}", simple_final.0 * simple_final.1);
     let aim_final = aim_coords.last().unwrap();
     println!("Part 2: {}", aim_final.0 * aim_final.1);
+    Ok(())
+}
+
+#[derive(Debug)]
+enum Instruction {
+    Forward(u32),
+    Down(u32),
+    Up(u32),
+}
+
+impl FromStr for Instruction {
+    type Err = Error;
+    fn from_str(line: &str) -> Result<Instruction> {
+        let instruction: Vec<&str> = line.split(' ').collect();
+        let direction = instruction.get(0).ok_or(anyhow!("Direction not found"))?;
+        let offset: u32 = instruction[1].parse()?;
+
+        match *direction {
+            "forward" => Ok(Instruction::Forward(offset)),
+            "down" => Ok(Instruction::Down(offset)),
+            "up" => Ok(Instruction::Up(offset)),
+            _ => Err(anyhow!("Invalid direction")),
+        }
+    }
 }
