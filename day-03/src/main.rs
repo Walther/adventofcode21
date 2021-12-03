@@ -47,13 +47,7 @@ fn main() {
 
     for column in 0..oxygen_rating[0].len() {
         let most_common = most_common_bit_in_column(&oxygen_rating, column);
-
-        oxygen_rating = oxygen_rating
-            .iter()
-            .filter(|&x| x[column] == most_common)
-            .cloned()
-            .collect();
-
+        oxygen_rating.retain(|x| x[column] == most_common);
         if oxygen_rating.len() == 1 {
             break;
         }
@@ -61,28 +55,14 @@ fn main() {
 
     for column in 0..co2_rating[0].len() {
         let least_common = least_common_bit_in_column(&co2_rating, column);
-
-        co2_rating = co2_rating
-            .iter()
-            .filter(|&x| x[column] == least_common)
-            .cloned()
-            .collect();
-
+        co2_rating.retain(|x| x[column] == least_common);
         if co2_rating.len() == 1 {
             break;
         }
     }
 
-    let mut oxygen_bits = bitvec![];
-    for bit in &oxygen_rating[0] {
-        oxygen_bits.push(*bit);
-    }
-
-    let mut co2_bits = bitvec![];
-    for bit in &co2_rating[0] {
-        co2_bits.push(*bit);
-    }
-
+    let mut oxygen_bits = oxygen_rating[0].clone();
+    let mut co2_bits = co2_rating[0].clone();
     // bit order shenanigans. // TODO: cleanup!
     oxygen_bits.reverse();
     co2_bits.reverse();
