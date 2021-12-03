@@ -14,55 +14,31 @@ fn main() {
         table.push(row);
     }
 
-    // count column sums
-    let mut column_sums: Vec<u32> = Vec::new();
-    for column in 0..table[0].len() {
-        let mut sum = 0;
-        for line in &table {
-            sum += line[column];
-        }
-        column_sums.push(sum);
+    let width = table[0].len();
+
+    let mut gamma_bits: String = String::new();
+    let mut epsilon_bits: String = String::new();
+
+    for column in 0..width {
+        gamma_bits.push_str(&most_common_bit_in_column(&table, column).to_string());
+        epsilon_bits.push_str(&least_common_bit_in_column(&table, column).to_string());
     }
-
-    // if the sum is larger than half the length of the list, one was more common
-    // if the sum is smaller, zero was more common in that column
-
-    let half: u32 = table.len() as u32 / 2;
-
-    let gamma_bits: String = column_sums
-        .iter()
-        .map(|&x| if x > half { '1' } else { '0' })
-        .collect();
-
-    // epsilon uses least common.
-    // TODO: optimize; this would be just a bitflip of the other
-    let epsilon_bits: String = column_sums
-        .iter()
-        .map(|&x| if x < half { '1' } else { '0' })
-        .collect();
 
     let gamma_rate = u32::from_str_radix(&gamma_bits, 2).unwrap();
     let epsilon_rate = u32::from_str_radix(&epsilon_bits, 2).unwrap();
     let power_consumption = gamma_rate * epsilon_rate;
     println!("Part 1: {}", power_consumption);
 
-    // Part 2 shenanigans, very ugly for now!
-
     // iteratively filter through the tables to reduce the numbers into one rating
     let mut oxygen_rating = table.clone();
     let mut co2_rating = table.clone();
 
     for column in 0..oxygen_rating[0].len() {
-        let count: u32 = oxygen_rating.len() as u32;
-        let mut sum = 0;
-        for line in &oxygen_rating {
-            sum += line[column];
-        }
-        let most_common = if sum >= (count - sum) { "1" } else { "0" };
+        let most_common = most_common_bit_in_column(&oxygen_rating, column);
 
         oxygen_rating = oxygen_rating
             .iter()
-            .filter(|&x| *x.get(column).unwrap().to_string() == *most_common)
+            .filter(|&x| x[column] == most_common)
             .cloned()
             .collect();
 
@@ -72,16 +48,11 @@ fn main() {
     }
 
     for column in 0..co2_rating[0].len() {
-        let count: u32 = co2_rating.len() as u32;
-        let mut sum = 0;
-        for line in &co2_rating {
-            sum += line[column];
-        }
-        let least_common = if sum >= (count - sum) { "0" } else { "1" };
+        let least_common = least_common_bit_in_column(&co2_rating, column);
 
         co2_rating = co2_rating
             .iter()
-            .filter(|&x| *x.get(column).unwrap().to_string() == *least_common)
+            .filter(|&x| x[column] == least_common)
             .cloned()
             .collect();
 
@@ -97,4 +68,28 @@ fn main() {
     let co2_rating = u32::from_str_radix(&co2_bits, 2).unwrap();
 
     println!("Part 2: {}", oxygen_rating * co2_rating);
+}
+
+/// Given a 2D table of bits and a column index, returns the most common bit of that column. If there's an equal amount of 0s and 1s, 1 is returned.
+fn most_common_bit_in_column(table: &[Vec<u32>], column: usize) -> u32 {
+    let count: u32 = table.len() as u32;
+    let mut sum = 0;
+    for line in table {
+        sum += line[column];
+    }
+    if sum >= (count - sum) {
+        1
+    } else {
+        0
+    }
+}
+
+/// Given a 2D table of bits and a column index, returns the least common bit of that column. If there's an equal amount of 0s and 1s, 0 is returned. This mirrors the behavior of [most_common_bit_in_column].
+fn least_common_bit_in_column(table: &[Vec<u32>], column: usize) -> u32 {
+    let most_common = most_common_bit_in_column(table, column);
+    if most_common == 1 {
+        0
+    } else {
+        1
+    }
 }
