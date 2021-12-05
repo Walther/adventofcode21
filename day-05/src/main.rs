@@ -1,125 +1,124 @@
-use std::collections::HashMap;
+use anyhow::{Context, Error, Result};
+use std::{collections::HashMap, str::FromStr};
 
-fn main() {
+fn main() -> Result<()> {
     const INPUT: &str = include_str!("input.txt");
-    let lines = INPUT.lines();
+    let rows = INPUT.lines();
+
+    // Parse and collect all Line objects
+    let lines: Vec<Line> = rows.map(|row| row.parse()).collect::<Result<_, _>>()?;
 
     // Maps of visit counts: (x,y), count
-    let mut map_straight: HashMap<(i32, i32), i32> = HashMap::new();
-    let mut map_diagonal: HashMap<(i32, i32), i32> = HashMap::new();
+    let mut map_axis_aligned: HashMap<(i32, i32), i32> = HashMap::new();
+    let mut map_all: HashMap<(i32, i32), i32> = HashMap::new();
 
-    for line in lines {
-        // x1,y1 -> x2,y2
-        // TODO: cleanup
-        let (a, b) = line.split_once(" -> ").unwrap();
-        let (x1, y1) = a.split_once(",").unwrap();
-        let (x2, y2) = b.split_once(",").unwrap();
-        let x1: i32 = x1.parse().unwrap();
-        let y1: i32 = y1.parse().unwrap();
-        let x2: i32 = x2.parse().unwrap();
-        let y2: i32 = y2.parse().unwrap();
-
-        // First consider only the lines that are along the axes
-        if let Some(points_straight) = line_get_points(x1, y1, x2, y2) {
-            for (x, y) in points_straight {
-                if let Some(point) = map_straight.get_mut(&(x, y)) {
-                    *point += 1;
-                } else {
-                    map_straight.insert((x, y), 1);
-                }
-            }
-        } else {
-            // Otherwise, consider the diagonal
-            let points_diagonal = diag_get_points(x1, y1, x2, y2);
-            for (x, y) in points_diagonal {
-                if let Some(point) = map_diagonal.get_mut(&(x, y)) {
-                    *point += 1;
-                } else {
-                    map_diagonal.insert((x, y), 1);
-                }
-            }
+    // Lines: axis-aligned only
+    for line in lines.iter().filter(|line| line.is_axis_aligned()) {
+        for (x, y) in line.get_points() {
+            *map_axis_aligned.entry((x, y)).or_insert(0) += 1;
         }
     }
 
-    let repeat_visits_straight = map_straight
-        .iter()
-        .filter(|(&(_x, _y), &visits)| visits > 1)
-        .count();
-    println!("Part 1: {}", repeat_visits_straight);
-
-    // Combine the straight lines into the diagonal map
-    for (&(x, y), visits_s) in map_straight.iter_mut() {
-        if let Some(visits_d) = map_diagonal.get_mut(&(x, y)) {
-            *visits_d += *visits_s;
-        } else {
-            map_diagonal.insert((x, y), *visits_s);
+    // Lines: all
+    for line in lines.iter() {
+        for (x, y) in line.get_points() {
+            *map_all.entry((x, y)).or_insert(0) += 1;
         }
     }
 
-    let repeat_visits_diagonal = map_diagonal
-        .iter()
-        .filter(|(&(_x, _y), &visits)| visits > 1)
+    let repeat_visits_aa = map_axis_aligned
+        .values()
+        .filter(|&visits| *visits > 1)
         .count();
-    println!("Part 2: {}", repeat_visits_diagonal);
+    println!("Part 1: {}", repeat_visits_aa);
+
+    let repeat_visits_all = map_all.values().filter(|&visits| *visits > 1).count();
+    println!("Part 2: {}", repeat_visits_all);
 
     // debug print
-    // print_map(map_diagonal);
+    // print_map(map_all);
+    Ok(())
 }
 
-/// Given the start coordinate x1,y1 and end coordinate x2,y2, return all coordinates on the axis-aligned straight line between those points.
-/// If the given line would not be axis-aligned, an empty list is returned.
-fn line_get_points(x1: i32, y1: i32, x2: i32, y2: i32) -> Option<Vec<(i32, i32)>> {
-    let mut coords = Vec::new();
+struct Line {
+    start: (i32, i32),
+    end: (i32, i32),
+}
 
-    // Make sure we have a straight line
-    if !(x1 == x2 || y1 == y2) {
-        return None;
+impl Line {
+    /// Create a new [Line] from two tuples: start and end coordinates
+    fn new(start: (i32, i32), end: (i32, i32)) -> Self {
+        Self { start, end }
     }
 
-    let xmin = x1.min(x2);
-    let xmax = x1.max(x2);
-    let ymin = y1.min(y2);
-    let ymax = y1.max(y2);
+    /// Destructures a given [Line] into two tuples: start and end coordinates
+    fn coordinates(&self) -> ((i32, i32), (i32, i32)) {
+        let ((x1, y1), (x2, y2)) = (self.start, self.end);
+        ((x1, y1), (x2, y2))
+    }
 
-    for x in xmin..=xmax {
-        for y in ymin..=ymax {
-            coords.push((x, y));
+    /// Returns whether the [Line] is axis aligned; that is, a straight line on either the X or Y axis
+    fn is_axis_aligned(&self) -> bool {
+        let ((x1, y1), (x2, y2)) = self.coordinates();
+        x1 == x2 || y1 == y2
+    }
+
+    /// Given the start coordinate x1,y1 and end coordinate x2,y2, return the points on the lines.
+    /// Note: this is only guaranteed to work on lines that are either axis-aligned or at an exact 45deg angle.
+    fn get_points(&self) -> Vec<(i32, i32)> {
+        let ((x1, y1), (x2, y2)) = self.coordinates();
+        let mut points = Vec::new();
+
+        // becomes 0 if equal, -1 if less, 1 if greater
+        let xdir = x2.cmp(&x1) as i32;
+        let ydir = y2.cmp(&y1) as i32;
+
+        let mut x = x1;
+        let mut y = y1;
+        while x != x2 || y != y2 {
+            points.push((x, y));
+            x += xdir;
+            y += ydir;
         }
+        // End point inclusive
+        points.push((x, y));
+        points
     }
-
-    Some(coords)
 }
 
-/// Given the start coordinate x1,y1 and end coordinate x2,y2, return the points on the 45deg diagonal line.
-/// Note: this function is not guaranteed to work, if the given coordinates do not produce a 45deg diagonal line.
-fn diag_get_points(x1: i32, y1: i32, x2: i32, y2: i32) -> Vec<(i32, i32)> {
-    let mut coords = Vec::new();
+impl FromStr for Line {
+    type Err = Error;
 
-    let xdir = if x2 > x1 { 1 } else { -1 };
-    let ydir = if y2 > y1 { 1 } else { -1 };
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let (start, end) = s
+            .split_once(" -> ")
+            .context("Failed to split line to start and end coordinates")?;
+        let (x1, y1) = start
+            .split_once(",")
+            .context("Failed to split start coordinate to x and y")?;
+        let (x2, y2) = end
+            .split_once(",")
+            .context("Failed to split end coordinate to x and y")?;
+        let x1: i32 = x1.parse().context("Invalid x1 coordinate")?;
+        let y1: i32 = y1.parse().context("Invalid y1 coordinate")?;
+        let x2: i32 = x2.parse().context("Invalid x2 coordinate")?;
+        let y2: i32 = y2.parse().context("Invalid y2 coordinate")?;
+        let (start, end) = ((x1, y1), (x2, y2));
 
-    let mut x = x1;
-    let mut y = y1;
-    while x != x2 && y != y2 {
-        coords.push((x, y));
-        x += xdir;
-        y += ydir;
+        Ok(Line::new(start, end))
     }
-    // push the end point too
-    coords.push((x, y));
-    coords
 }
 
 #[allow(dead_code)]
 /// Debug print helper
 fn print_map(map: HashMap<(i32, i32), i32>) {
-    let ((xmax, _), _) = map
-        .iter()
-        .max_by(|((x1, _y1), _value1), ((x2, _y2), _value2)| x1.cmp(x2))
+    let (xmax, _) = map
+        .keys()
+        .max_by(|(x1, _y1), (x2, _y2)| x1.cmp(x2))
         .unwrap();
-    let ((_, ymax), _) = map
-        .iter()
-        .max_by(|((_x1, y1), _value1), ((_x2, y2), _value2)| y1.cmp(y2))
+    let (_, ymax) = map
+        .keys()
+        .max_by(|(_x1, y1), (_x2, y2)| y1.cmp(y2))
         .unwrap();
     for y in 0..=*ymax {
         for x in 0..=*xmax {
