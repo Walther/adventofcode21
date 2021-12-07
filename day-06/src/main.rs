@@ -3,7 +3,7 @@ fn main() {
     // Input file has a comma-separated list of numbers.
     // Each number represents one fish, showing the day number in its biological clock,
     // counting down to zero for spawning day.
-    let numbers: Vec<usize> = INPUT.split(",").map(|x| x.parse().unwrap()).collect();
+    let numbers: Vec<usize> = INPUT.split(',').map(|x| x.parse().unwrap()).collect();
 
     // Fish biological clock counter:
     // - array of days 0 to 8 inclusive
