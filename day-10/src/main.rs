@@ -78,7 +78,7 @@ fn main() -> Result<()> {
     Ok(())
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 enum Token {
     AngleLeft,   // <
     AngleRight,  // >
@@ -118,39 +118,39 @@ impl Code {
     fn validate(&mut self) {
         let mut stack = Vec::new();
         // First phase: closing ones must match the top of the stack
-        for token in &self.tokens {
+        for &token in &self.tokens {
             match token {
                 // Left
-                AngleLeft => stack.push(token.to_owned()),
-                CurlyLeft => stack.push(token.to_owned()),
-                RoundLeft => stack.push(token.to_owned()),
-                SquareLeft => stack.push(token.to_owned()),
+                AngleLeft => stack.push(token),
+                CurlyLeft => stack.push(token),
+                RoundLeft => stack.push(token),
+                SquareLeft => stack.push(token),
                 // Right
                 AngleRight => {
                     let top = stack.pop().unwrap();
                     if top != AngleLeft {
-                        self.validity = Corrupted(token.clone());
+                        self.validity = Corrupted(token);
                         return;
                     }
                 }
                 CurlyRight => {
                     let top = stack.pop().unwrap();
                     if top != CurlyLeft {
-                        self.validity = Corrupted(token.clone());
+                        self.validity = Corrupted(token);
                         return;
                     }
                 }
                 RoundRight => {
                     let top = stack.pop().unwrap();
                     if top != RoundLeft {
-                        self.validity = Corrupted(token.clone());
+                        self.validity = Corrupted(token);
                         return;
                     }
                 }
                 SquareRight => {
                     let top = stack.pop().unwrap();
                     if top != SquareLeft {
-                        self.validity = Corrupted(token.clone());
+                        self.validity = Corrupted(token);
                         return;
                     }
                 }
